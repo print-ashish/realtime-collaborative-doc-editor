@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..database import get_db
+from ..ot_engine import apply_operation
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -23,6 +24,7 @@ def create_document(doc: schemas.DocumentCreate, owner_id: int, db: Session = De
     db.add(new_doc)
     db.commit()
     db.refresh(new_doc)
+    new_doc.content = ""
     return new_doc
 
 @router.get("/{doc_id}", response_model=schemas.Document)
@@ -31,4 +33,38 @@ def get_document(doc_id: str, db: Session = Depends(get_db)):
     db_doc = db.query(models.Document).filter(models.Document.id == doc_id).first()
     if not db_doc:
         raise HTTPException(status_code = 404, detail="Document not found")
+
+    operations = db.query(models.Operation).filter(models.Operation.doc_id == doc_id).order_by(models.Operation.revision).all()
+
+    #replay the history
+    current_text = ""
+    for op in operations:
+        current_text = apply_operation(current_text , op.op_type , op.position , op.content)
+
+    db_doc.content = current_text
     return db_doc
+
+
+@router.post("/{doc_id}/operations", response_model = schemas.Operation)
+def create_operation(doc_id: str , op : schemas.OperationCreate , db : Session = Depends(get_db)):
+    #lets check first the doc id exist or nto 
+    db_doc = db.query(models.Document).filter(models.Document.id== doc_id).first()
+    if not db_doc:
+        raise HTTPException(status_code = 404 , detail = "Document not found")
+
+    #count the total operatiions
+    count = db.query(models.Operation).filter(models.Operation.doc_id == doc_id).count()
+    next_revision = count + 1 
+
+    new_op = models.Operation( 
+        doc_id = doc_id, 
+        user_id = op.user_id,
+        op_type = op.op_type,
+        position = op.position,
+        content = op.content ,
+         revision = next_revision
+    )
+    db.add(new_op)
+    db.commit()
+    db.refresh(new_op)
+    return new_op
