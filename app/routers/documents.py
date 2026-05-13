@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..database import get_db
 from ..ot_engine import apply_operation
+from typing import List
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -68,3 +69,14 @@ def create_operation(doc_id: str , op : schemas.OperationCreate , db : Session =
     db.commit()
     db.refresh(new_op)
     return new_op
+
+@router.get("/user/{user_id}", response_model=List[schemas.Document])
+def get_user_documents(user_id: int, db: Session = Depends(get_db)):
+    # 1. Fetch all documents owned by this user
+    documents = db.query(models.Document).filter(models.Document.owner_id == user_id).all()
+    
+    # 2. Set default empty content so the schema doesn't complain
+    for doc in documents:
+        doc.content = ""
+        
+    return documents

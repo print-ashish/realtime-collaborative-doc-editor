@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from .routers import documents  
 from .routers import  users
+from .routers import operations
 
 # Create database tables (Initial simplified approach, will use Alembic later)
 # Base.metadata.create_all(bind=engine)
@@ -23,4 +24,5 @@ def read_root():
 
 app.include_router(users.router)
 app.include_router(documents.router)
+app.include_router(operations.router)
 # app.include_router(documents.router)
