@@ -27,6 +27,7 @@ class Document(DocumentBase):
     owner_id: int
     content : str 
     created_at: datetime
+    revision:int
 
     class Config:
         from_attributes = True
@@ -43,6 +44,7 @@ class OperationCreate(BaseModel):
     op_type: str  # "insert" or "delete"
     position: int
     content: Optional[str] = None
+    revision : int
 
 class Operation(OperationBase):
     id: int

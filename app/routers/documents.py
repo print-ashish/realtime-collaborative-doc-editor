@@ -26,6 +26,7 @@ def create_document(doc: schemas.DocumentCreate, owner_id: int, db: Session = De
     db.commit()
     db.refresh(new_doc)
     new_doc.content = ""
+    new_doc.revision = 0
     return new_doc
 
 @router.get("/{doc_id}", response_model=schemas.Document)
@@ -43,6 +44,7 @@ def get_document(doc_id: str, db: Session = Depends(get_db)):
         current_text = apply_operation(current_text , op.op_type , op.position , op.content)
 
     db_doc.content = current_text
+    db_doc.revision = len(operations)
     return db_doc
 
 
@@ -75,8 +77,9 @@ def get_user_documents(user_id: int, db: Session = Depends(get_db)):
     # 1. Fetch all documents owned by this user
     documents = db.query(models.Document).filter(models.Document.owner_id == user_id).all()
     
-    # 2. Set default empty content so the schema doesn't complain
+    # 2. Set default empty values so the schema doesn't complain
     for doc in documents:
         doc.content = ""
+        doc.revision = 0
         
     return documents
